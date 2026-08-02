@@ -5,7 +5,9 @@ PMap là ứng dụng bản đồ giúp bạn:
 - Báo cáo sự cố đô thị (đường hỏng, ngập nước, mất điện đường, mất an ninh...) để mọi người cùng biết và cơ quan quản lý xử lý.
 - Vô cùng tiện lợi: Không cần cài đặt gì cả — chỉ cần mở trình duyệt (Chrome, Safari, Cốc Cốc...) và truy cập vào đường link của ứng dụng.
 
----
+Ứng dụng bản đồ đô thị thông minh, mobile-first: Next.js (App Router) + TypeScript + Tailwind +
+MongoDB + **OpenStreetMap** (bản đồ, định tuyến, tìm địa điểm — hoàn toàn miễn phí, không cần API key)
++ Gemini AI để đưa ra gợi ý tuyến đường / đề xuất nâng cấp hạ tầng.
 
 ## 1. Làm quen với màn hình chính
 
