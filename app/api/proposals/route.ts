@@ -2,7 +2,6 @@ import { NextResponse } from 'next/server';
 import dbConnect from '@/lib/mongodb';
 import Report from '@/models/Report';
 import { generateJSON } from '@/lib/gemini';
-import { isAdminRequest } from '@/lib/adminAuth';
 import { INCIDENT_TYPES } from '@/services/incidentTypes';
 
 const TYPE_LABELS: Record<string, string> = Object.fromEntries(
@@ -23,12 +22,8 @@ function areaKey(lat: number, lng: number): string {
   return `${lat.toFixed(2)},${lng.toFixed(2)}`;
 }
 
-// GET /api/proposals -- admin only (enforced by middleware.ts + this check)
-export async function GET(req: Request) {
-  if (!(await isAdminRequest(req))) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
+// GET /api/proposals -- open for this demo (no admin auth gate)
+export async function GET() {
   await dbConnect();
   try {
     const incidents = await Report.find({}).sort({ timestamp: -1 }).limit(300);

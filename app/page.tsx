@@ -40,6 +40,7 @@ export default function HomePage() {
   const [routeInfo, setRouteInfo] = useState<RouteResult | null>(null);
   const [aiInsights, setAiInsights] = useState<string[]>([]);
   const [aiNote, setAiNote] = useState('');
+  const [aiAnalyzing, setAiAnalyzing] = useState(false);
   const [routing, setRouting] = useState(false);
   const [routeError, setRouteError] = useState('');
 
@@ -114,6 +115,7 @@ export default function HomePage() {
       setRouteInfo(null);
       setAiInsights([]);
       setAiNote('');
+      setAiAnalyzing(false);
       setRouteError('');
     }
   };
@@ -125,11 +127,17 @@ export default function HomePage() {
     }
     setRouting(true);
     setRouteError('');
+    setAiInsights([]);
+    setAiNote('');
     setDestinationPin(destination);
     try {
       const route = await getRoute(myLocation, destination);
       setRouteCoordinates(route.coordinates);
       setRouteInfo(route);
+      // Route is drawn — unblock the UI here and let AI analysis run as its
+      // own, separately-indicated step instead of holding up the route.
+      setRouting(false);
+      setAiAnalyzing(true);
 
       const aiData = await analyzeRouteWithAI({
         origin: `${myLocation.lat},${myLocation.lng}`,
@@ -157,6 +165,7 @@ export default function HomePage() {
       setRouteError('Không thể tính toán tuyến đường. Vui lòng thử lại.');
     } finally {
       setRouting(false);
+      setAiAnalyzing(false);
     }
   };
 
@@ -186,6 +195,7 @@ export default function HomePage() {
     setRouteInfo(null);
     setAiInsights([]);
     setAiNote('');
+    setAiAnalyzing(false);
     setRouteError('');
     setSearchQuery('');
   };
@@ -227,8 +237,9 @@ export default function HomePage() {
       {/* Top floating control bar */}
       <div className="absolute top-0 left-0 w-full p-3 md:p-4 z-[1000] flex flex-col gap-2 pointer-events-none">
         <div className="flex gap-2 pointer-events-auto items-stretch">
-          <div className="hidden sm:flex items-center gap-2 bg-white rounded-xl shadow-lg px-4 font-bold text-primary-dark whitespace-nowrap">
-            Smart&nbsp;Traffic
+          <div className="hidden sm:flex items-center gap-2 bg-white rounded-xl shadow-lg pl-2.5 pr-4 font-bold text-gray-900 whitespace-nowrap">
+            <span className="flex items-center justify-center w-7 h-7 rounded-lg bg-primary text-white text-sm">📍</span>
+            PMap
           </div>
 
           <div className="flex-1 flex bg-white rounded-xl shadow-lg p-1 gap-1">
@@ -352,16 +363,32 @@ export default function HomePage() {
                   </button>
                 )}
 
-                {aiInsights.length > 0 && (
-                  <ul className="space-y-2 mb-2">
-                    {aiInsights.map((insight, idx) => (
-                      <li key={idx} className="p-3 bg-primary-light/40 border border-primary/40 text-gray-700 rounded-xl text-sm">
-                        🤖 {insight}
-                      </li>
-                    ))}
-                  </ul>
+                {(aiAnalyzing || aiInsights.length > 0 || aiNote) && (
+                  <div className="mb-2 rounded-xl border border-primary/40 bg-gradient-to-br from-primary-light/50 to-white overflow-hidden">
+                    <div className="flex items-center gap-1.5 px-3 pt-2.5 text-xs font-semibold text-primary-dark">
+                      <span>✨</span> PMap AI
+                    </div>
+                    <div className="px-3 pb-3 pt-1.5">
+                      {aiAnalyzing ? (
+                        <div className="flex items-center gap-2 text-sm text-gray-500">
+                          <span className="w-3.5 h-3.5 border-2 border-primary-light border-t-primary-dark rounded-full animate-spin" />
+                          Đang phân tích tuyến đường và sự cố xung quanh...
+                        </div>
+                      ) : aiInsights.length > 0 ? (
+                        <ul className="space-y-1.5">
+                          {aiInsights.map((insight, idx) => (
+                            <li key={idx} className="flex gap-2 text-sm text-gray-700">
+                              <span className="text-primary-dark">•</span>
+                              <span>{insight}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <p className="text-xs text-gray-400">{aiNote}</p>
+                      )}
+                    </div>
+                  </div>
                 )}
-                {aiNote && <p className="text-xs text-gray-400 mb-2">{aiNote}</p>}
               </>
             )}
           </>

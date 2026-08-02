@@ -2,11 +2,9 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { getInfrastructureProposals, AreaProposal } from '@/services/aiService';
 
 export default function AdminDashboard() {
-  const router = useRouter();
   const [proposals, setProposals] = useState<AreaProposal[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -25,12 +23,6 @@ export default function AdminDashboard() {
       .finally(() => setLoading(false));
   }, []);
 
-  const handleLogout = async () => {
-    await fetch('/api/admin/logout', { method: 'POST' });
-    router.push('/admin/login');
-    router.refresh();
-  };
-
   const severityColor = (severity: string) => {
     if (severity?.includes('Cao')) return 'border-red-300 bg-red-50 text-red-700';
     if (severity?.includes('Trung')) return 'border-amber-300 bg-amber-50 text-amber-700';
@@ -39,25 +31,22 @@ export default function AdminDashboard() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <header className="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between sticky top-0 z-10">
-        <div>
-          <h1 className="text-xl font-bold text-gray-900">Bảng quản trị hạ tầng đô thị</h1>
-          <p className="text-sm text-gray-500">Đề xuất quy hoạch dựa trên AI (Gemini)</p>
-        </div>
+      <header className="bg-white/90 backdrop-blur border-b border-gray-200 px-6 py-4 flex items-center justify-between sticky top-0 z-10">
         <div className="flex items-center gap-3">
-          <Link
-            href="/"
-            className="text-sm font-medium text-gray-600 hover:text-primary-dark px-3 py-2 rounded-lg hover:bg-gray-100 transition-colors"
-          >
-            ← Về ứng dụng
-          </Link>
-          <button
-            onClick={handleLogout}
-            className="text-sm font-medium text-white bg-gray-900 hover:bg-gray-700 px-4 py-2 rounded-lg transition-colors"
-          >
-            Đăng xuất
-          </button>
+          <span className="flex items-center justify-center w-9 h-9 rounded-xl bg-primary text-white font-bold text-sm shadow-sm">
+            P
+          </span>
+          <div>
+            <h1 className="text-lg font-bold text-gray-900 leading-tight">PMap · Quản trị hạ tầng</h1>
+            <p className="text-xs text-gray-500">Đề xuất quy hoạch do AI phân tích</p>
+          </div>
         </div>
+        <Link
+          href="/"
+          className="text-sm font-medium text-gray-600 hover:text-primary-dark px-3 py-2 rounded-lg hover:bg-gray-100 transition-colors"
+        >
+          ← Về ứng dụng
+        </Link>
       </header>
 
       <main className="p-6 md:p-8 max-w-6xl mx-auto">
@@ -71,7 +60,10 @@ export default function AdminDashboard() {
         <h2 className="text-lg font-semibold mb-6 text-gray-800">Đề xuất nâng cấp theo khu vực</h2>
 
         {loading ? (
-          <div className="text-primary-dark font-medium animate-pulse">Đang phân tích dữ liệu...</div>
+          <div className="flex items-center gap-2 text-primary-dark font-medium">
+            <span className="w-4 h-4 border-2 border-primary-light border-t-primary-dark rounded-full animate-spin" />
+            Đang phân tích dữ liệu bằng AI...
+          </div>
         ) : error ? (
           <p className="text-red-600 bg-red-50 border border-red-200 rounded-xl px-4 py-3">{error}</p>
         ) : proposals.length === 0 ? (

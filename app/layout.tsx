@@ -1,9 +1,12 @@
 import './globals.css';
 import type { Metadata, Viewport } from 'next';
+import { Inter } from 'next/font/google';
+
+const inter = Inter({ subsets: ['latin', 'vietnamese'], variable: '--font-inter' });
 
 export const metadata: Metadata = {
-  title: 'Smart Traffic AI',
-  description: 'Báo cáo sự cố đô thị theo thời gian thực và chỉ đường thông minh với AI (OpenStreetMap)',
+  title: 'PMap · Bản đồ đô thị thông minh',
+  description: 'PMap — báo cáo sự cố đô thị theo thời gian thực và chỉ đường thông minh với AI (OpenStreetMap)',
 };
 
 export const viewport: Viewport = {
@@ -19,8 +22,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="vi">
-      <body className="antialiased">{children}</body>
+    <html lang="vi" className={inter.variable}>
+      <body className="antialiased font-sans">{children}</body>
     </html>
   );
 }

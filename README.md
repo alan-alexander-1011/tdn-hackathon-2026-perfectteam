@@ -1,17 +1,17 @@
-# Smart Traffic AI
+# PMap
 
-Ứng dụng giao thông thông minh, mobile-first: Next.js (App Router) + TypeScript + Tailwind +
+Ứng dụng bản đồ đô thị thông minh, mobile-first: Next.js (App Router) + TypeScript + Tailwind +
 MongoDB + **OpenStreetMap** (bản đồ, định tuyến, tìm địa điểm — hoàn toàn miễn phí, không cần API key)
-+ một service Python AI bên ngoài để đưa ra gợi ý tuyến đường / đề xuất nâng cấp hạ tầng.
++ Gemini AI để đưa ra gợi ý tuyến đường / đề xuất nâng cấp hạ tầng.
+
+> Bản demo: trang `/admin` không yêu cầu đăng nhập.
 
 ## Cấu trúc trang
 
 | Trang | Đường dẫn | Mô tả |
 |---|---|---|
-| Trang chủ | `/` | Trang giới thiệu, dẫn tới 3 trang chức năng bên dưới |
-| Báo cáo sự cố | `/report` | Không cần bản đồ chỉ đường — dùng GPS hoặc nhập tọa độ tay, có bản đồ ghim nhỏ để kéo/chạm chỉnh vị trí chính xác, tự động hiển thị các sự cố trong bán kính 5km quanh vị trí hiện tại |
-| Chỉ đường | `/directions` | Bản đồ OpenStreetMap, tìm tuyến đường được AI gợi ý, dùng OSRM để vẽ đường đi |
-| Quản trị | `/admin` | Dashboard hiển thị đề xuất nâng cấp hạ tầng do AI phân tích |
+| Ứng dụng chính | `/` | Bản đồ một trang duy nhất với 2 chế độ chuyển đổi bằng tab: **Chỉ đường** (tìm địa chỉ hoặc ghim điểm đến, AI gợi ý tuyến/tránh sự cố) và **Báo cáo sự cố** (dùng GPS hoặc ghim tay, xem sự cố lân cận) |
+| Quản trị | `/admin` | Dashboard hiển thị đề xuất nâng cấp hạ tầng do AI phân tích (mở, không cần đăng nhập — bản demo) |
 
 ## Đã bỏ Google Maps — dùng gì thay thế?
 
