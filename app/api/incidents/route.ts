@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import dbConnect from '@/lib/mongodb';
 import Report from '@/models/Report';
+import { isAdminRequest } from '@/lib/adminAuth';
 
 // Haversine distance in kilometers between two lat/lng points.
 function getDistanceKm(lat1: number, lng1: number, lat2: number, lng2: number) {
@@ -44,11 +45,29 @@ export async function GET(req: Request) {
   }
 }
 
+// body: { type, coordinates: {lat,lng}, note?, source?: 'gps' | 'admin_pinpoint' }
+// `admin_pinpoint` means the reporter dropped a pin anywhere on the map
+// instead of using their own GPS location -- only admins are allowed to do
+// that, so it's checked server-side here, not just hidden in the UI.
 export async function POST(req: Request) {
   await dbConnect();
   try {
     const body = await req.json();
-    const newReport = await Report.create(body);
+    const source = body.source === 'admin_pinpoint' ? 'admin_pinpoint' : 'gps';
+
+    if (source === 'admin_pinpoint' && !(await isAdminRequest(req))) {
+      return NextResponse.json(
+        { error: 'Chỉ admin mới có thể ghim vị trí báo cáo tuỳ ý' },
+        { status: 403 }
+      );
+    }
+
+    const newReport = await Report.create({
+      type: body.type,
+      coordinates: body.coordinates,
+      note: body.note,
+      source,
+    });
     return NextResponse.json(newReport, { status: 201 });
   } catch (error) {
     return NextResponse.json({ error: 'Failed to create report' }, { status: 500 });

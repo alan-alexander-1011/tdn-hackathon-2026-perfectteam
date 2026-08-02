@@ -6,6 +6,8 @@ export interface IReport extends Document {
     lat: number;
     lng: number;
   };
+  note?: string;
+  source: 'gps' | 'admin_pinpoint';
   timestamp: Date;
 }
 
@@ -18,6 +20,12 @@ const ReportSchema = new Schema({
   coordinates: {
     lat: { type: Number, required: true },
     lng: { type: Number, required: true }
+  },
+  note: { type: String },
+  source: {
+    type: String,
+    enum: ['gps', 'admin_pinpoint'],
+    default: 'gps',
   },
   timestamp: { type: Date, default: Date.now },
 });

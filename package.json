@@ -9,6 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@google/genai": "^2.15.0",
     "leaflet": "^1.9.4",
     "react-leaflet": "^4.2.1",
     "mongoose": "^8.0.0",
