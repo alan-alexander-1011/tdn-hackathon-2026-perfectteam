@@ -65,6 +65,7 @@ export async function POST(req: Request) {
 
     const newReport = await Report.create({
       type: body.type,
+      subType: typeof body.subType === 'string' ? body.subType : undefined,
       coordinates: { lat, lng },
       note: body.note,
     });

@@ -5,6 +5,7 @@ import { IncidentType } from '@/services/incidentTypes';
 export interface IncidentRecord {
   _id: string;
   type: IncidentType;
+  subType?: string;
   coordinates: { lat: number; lng: number };
   note?: string;
   timestamp: string;
@@ -19,6 +20,7 @@ export async function listIncidents(): Promise<IncidentRecord[]> {
 
 export interface NewIncidentPayload {
   type: IncidentType;
+  subType?: string;
   coordinates: { lat: number; lng: number };
   note?: string;
 }

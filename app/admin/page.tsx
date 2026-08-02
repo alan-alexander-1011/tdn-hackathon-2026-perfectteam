@@ -9,7 +9,13 @@ import {
   deleteIncident,
   IncidentRecord,
 } from '@/services/incidentsAdminService';
-import { INCIDENT_TYPES, INCIDENT_TYPE_ORDER, IncidentType } from '@/services/incidentTypes';
+import {
+  INCIDENT_TYPES,
+  INCIDENT_TYPE_ORDER,
+  INCIDENT_SUBTYPES,
+  INCIDENT_SUBTYPE_ORDER,
+  IncidentType,
+} from '@/services/incidentTypes';
 
 type AdminTab = 'proposals' | 'reports';
 
@@ -45,6 +51,7 @@ export default function AdminDashboard() {
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const [newType, setNewType] = useState<IncidentType>('infrastructure');
+  const [newSubType, setNewSubType] = useState<string>(INCIDENT_SUBTYPE_ORDER.infrastructure[0]);
   const [newLat, setNewLat] = useState(String(DEFAULT_CENTER.lat));
   const [newLng, setNewLng] = useState(String(DEFAULT_CENTER.lng));
   const [newNote, setNewNote] = useState('');
@@ -77,7 +84,12 @@ export default function AdminDashboard() {
     setAdding(true);
     setAddError('');
     try {
-      await createIncident({ type: newType, coordinates: { lat, lng }, note: newNote || undefined });
+      await createIncident({
+        type: newType,
+        subType: newSubType,
+        coordinates: { lat, lng },
+        note: newNote || undefined,
+      });
       setNewNote('');
       loadReports();
       // Danh sách báo cáo vừa thay đổi -- làm mới lại đề xuất nâng cấp để phản ánh dữ liệu mới.
@@ -166,7 +178,10 @@ export default function AdminDashboard() {
                     <button
                       type="button"
                       key={key}
-                      onClick={() => setNewType(key)}
+                      onClick={() => {
+                        setNewType(key);
+                        setNewSubType(INCIDENT_SUBTYPE_ORDER[key][0]);
+                      }}
                       className={`flex items-center gap-2 py-2 px-2.5 rounded-lg border text-xs font-medium transition-colors text-left ${
                         newType === key ? 'text-white border-transparent' : 'bg-white text-gray-700 border-gray-200 hover:border-primary'
                       }`}
@@ -174,6 +189,26 @@ export default function AdminDashboard() {
                     >
                       <span>{INCIDENT_TYPES[key].icon}</span>
                       <span>{INCIDENT_TYPES[key].label}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Tình huống cụ thể</label>
+                <div className="flex flex-wrap gap-1.5">
+                  {INCIDENT_SUBTYPE_ORDER[newType].map((subKey) => (
+                    <button
+                      type="button"
+                      key={subKey}
+                      onClick={() => setNewSubType(subKey)}
+                      className={`py-1 px-2.5 rounded-full border text-xs font-medium transition-colors ${
+                        newSubType === subKey
+                          ? 'bg-primary text-white border-transparent'
+                          : 'bg-white text-gray-600 border-gray-200 hover:border-primary'
+                      }`}
+                    >
+                      {INCIDENT_SUBTYPES[newType][subKey].label}
                     </button>
                   ))}
                 </div>
@@ -201,13 +236,13 @@ export default function AdminDashboard() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Mô tả thêm (không bắt buộc)</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Ghi chú thêm (không bắt buộc)</label>
                 <textarea
                   value={newNote}
                   onChange={(e) => setNewNote(e.target.value)}
                   rows={2}
                   className="w-full border border-gray-200 rounded-lg px-2.5 py-1.5 text-sm outline-none focus:border-primary"
-                  placeholder={INCIDENT_TYPES[newType].description}
+                  placeholder="Thêm chi tiết nếu cần (không bắt buộc)"
                 />
               </div>
 
@@ -239,34 +274,43 @@ export default function AdminDashboard() {
                 <p className="p-5 text-gray-500 text-sm">Chưa có báo cáo nào.</p>
               ) : (
                 <ul className="divide-y divide-gray-100 max-h-[70vh] overflow-y-auto">
-                  {reports.map((r) => (
-                    <li key={r._id} className="flex items-center justify-between gap-3 px-5 py-3">
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span
-                            className="text-xs font-semibold px-2 py-0.5 rounded-full text-white shrink-0"
-                            style={{ backgroundColor: INCIDENT_TYPES[r.type]?.color }}
-                          >
-                            {INCIDENT_TYPES[r.type]?.icon} {INCIDENT_TYPES[r.type]?.label || r.type}
-                          </span>
-                          <span className="text-xs text-gray-400 shrink-0">
-                            {new Date(r.timestamp).toLocaleString('vi-VN')}
-                          </span>
+                  {reports.map((r) => {
+                    const subMeta = r.subType ? INCIDENT_SUBTYPES[r.type]?.[r.subType] : undefined;
+                    return (
+                      <li key={r._id} className="flex items-start justify-between gap-3 px-5 py-3">
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span
+                              className="text-xs font-semibold px-2 py-0.5 rounded-full text-white shrink-0"
+                              style={{ backgroundColor: INCIDENT_TYPES[r.type]?.color }}
+                            >
+                              {INCIDENT_TYPES[r.type]?.icon} {subMeta?.label || INCIDENT_TYPES[r.type]?.label || r.type}
+                            </span>
+                            <span className="text-xs text-gray-400 shrink-0">
+                              {new Date(r.timestamp).toLocaleString('vi-VN')}
+                            </span>
+                          </div>
+                          <p className="text-sm text-gray-600 mt-1 truncate">
+                            📍 {r.coordinates.lat.toFixed(5)}, {r.coordinates.lng.toFixed(5)}
+                            {r.note ? ` — ${r.note}` : ''}
+                          </p>
+                          {subMeta && (
+                            <p className="text-xs text-gray-500 mt-1.5 bg-gray-50 border border-gray-100 rounded-lg px-2.5 py-1.5">
+                              <span className="font-semibold text-gray-600">Đề xuất xử lý: </span>
+                              {subMeta.managementAction}
+                            </p>
+                          )}
                         </div>
-                        <p className="text-sm text-gray-600 mt-1 truncate">
-                          📍 {r.coordinates.lat.toFixed(5)}, {r.coordinates.lng.toFixed(5)}
-                          {r.note ? ` — ${r.note}` : ''}
-                        </p>
-                      </div>
-                      <button
-                        onClick={() => handleDeleteReport(r._id)}
-                        disabled={deletingId === r._id}
-                        className="shrink-0 text-xs font-semibold text-red-600 hover:text-red-700 hover:bg-red-50 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50"
-                      >
-                        {deletingId === r._id ? 'Đang xoá...' : 'Xoá'}
-                      </button>
-                    </li>
-                  ))}
+                        <button
+                          onClick={() => handleDeleteReport(r._id)}
+                          disabled={deletingId === r._id}
+                          className="shrink-0 text-xs font-semibold text-red-600 hover:text-red-700 hover:bg-red-50 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50"
+                        >
+                          {deletingId === r._id ? 'Đang xoá...' : 'Xoá'}
+                        </button>
+                      </li>
+                    );
+                  })}
                 </ul>
               )}
             </div>

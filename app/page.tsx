@@ -6,7 +6,13 @@ import dynamic from 'next/dynamic';
 import type { LatLng } from '@/components/MapView';
 import { getRoute, geocodeAddress, RouteResult } from '@/services/osrmService';
 import { analyzeRouteWithAI } from '@/services/aiService';
-import { INCIDENT_TYPES, INCIDENT_TYPE_ORDER, IncidentType } from '@/services/incidentTypes';
+import {
+  INCIDENT_TYPES,
+  INCIDENT_TYPE_ORDER,
+  INCIDENT_SUBTYPES,
+  INCIDENT_SUBTYPE_ORDER,
+  IncidentType,
+} from '@/services/incidentTypes';
 import { findIncidentsOnRoute, buildRouteWarnings } from '@/lib/ruleEngine';
 
 // react-leaflet touches `window`, so it must never render on the server.
@@ -50,6 +56,7 @@ export default function HomePage() {
 
   // --- Report state ---
   const [incidentType, setIncidentType] = useState<IncidentType>('infrastructure');
+  const [incidentSubType, setIncidentSubType] = useState<string>(INCIDENT_SUBTYPE_ORDER.infrastructure[0]);
   const [note, setNote] = useState('');
   const [reportPin, setReportPin] = useState<LatLng | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -159,7 +166,10 @@ export default function HomePage() {
       });
       setAiInsights(aiData.upgradeRecommendations || []);
       if (!aiData.aiAvailable) {
-        setAiNote(aiData.aiError || 'Gợi ý AI hiện không khả dụng.');
+        // Không hiển thị chi tiết lỗi kỹ thuật (vd. lỗi cấu hình API key) cho
+        // người dùng cuối -- chỉ báo ngắn gọn rằng gợi ý AI tạm thời chưa có,
+        // cảnh báo sự cố trên tuyến đường (rule-based) vẫn hoạt động bình thường.
+        setAiNote('Gợi ý AI hiện chưa khả dụng.');
       } else {
         setAiNote('');
       }
@@ -231,6 +241,7 @@ export default function HomePage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           type: incidentType,
+          subType: incidentSubType,
           coordinates: reportPin,
           note: note || undefined,
         }),
@@ -434,7 +445,10 @@ export default function HomePage() {
                   <button
                     type="button"
                     key={key}
-                    onClick={() => setIncidentType(key)}
+                    onClick={() => {
+                      setIncidentType(key);
+                      setIncidentSubType(INCIDENT_SUBTYPE_ORDER[key][0]);
+                    }}
                     className={`flex items-center gap-2 py-2.5 px-3 rounded-xl border text-sm font-medium transition-colors text-left ${
                       incidentType === key
                         ? 'text-white border-transparent'
@@ -450,6 +464,26 @@ export default function HomePage() {
             </div>
 
             <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Tình huống cụ thể</label>
+              <div className="flex flex-wrap gap-1.5">
+                {INCIDENT_SUBTYPE_ORDER[incidentType].map((subKey) => (
+                  <button
+                    type="button"
+                    key={subKey}
+                    onClick={() => setIncidentSubType(subKey)}
+                    className={`py-1.5 px-3 rounded-full border text-xs font-medium transition-colors ${
+                      incidentSubType === subKey
+                        ? 'bg-primary text-white border-transparent'
+                        : 'bg-white text-gray-600 border-gray-200 hover:border-primary'
+                    }`}
+                  >
+                    {INCIDENT_SUBTYPES[incidentType][subKey].label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Vị trí sự cố</label>
               <p className="text-sm text-gray-500">
                 {reportPin
@@ -459,13 +493,13 @@ export default function HomePage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Mô tả thêm (không bắt buộc)</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Ghi chú thêm (không bắt buộc)</label>
               <textarea
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
                 rows={2}
                 className="w-full border border-gray-200 rounded-xl px-3 py-2 text-gray-700 outline-none focus:border-primary"
-                placeholder={`Ví dụ: ${INCIDENT_TYPES[incidentType].description}`}
+                placeholder="Thêm chi tiết nếu cần (không bắt buộc)"
               />
             </div>
 
@@ -491,7 +525,9 @@ export default function HomePage() {
                     <li key={incident._id || idx} className="flex items-center justify-between text-sm bg-gray-50 rounded-lg px-3 py-2">
                       <span className="font-medium text-gray-700">
                         {INCIDENT_TYPES[incident.type as IncidentType]?.icon}{' '}
-                        {INCIDENT_TYPES[incident.type as IncidentType]?.label || incident.type}
+                        {incident.subType && INCIDENT_SUBTYPES[incident.type as IncidentType]?.[incident.subType]
+                          ? INCIDENT_SUBTYPES[incident.type as IncidentType][incident.subType].label
+                          : INCIDENT_TYPES[incident.type as IncidentType]?.label || incident.type}
                       </span>
                       <span className="text-xs text-gray-400">
                         {new Date(incident.timestamp).toLocaleDateString('vi-VN')}

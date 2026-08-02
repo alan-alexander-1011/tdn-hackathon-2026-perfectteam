@@ -7,6 +7,7 @@ export type IncidentType = 'environment' | 'infrastructure' | 'utilities' | 'saf
 
 export interface IReport extends Document {
   type: IncidentType;
+  subType?: string;
   coordinates: {
     lat: number;
     lng: number;
@@ -21,6 +22,10 @@ const ReportSchema = new Schema({
     enum: ['environment', 'infrastructure', 'utilities', 'safety'],
     required: true,
   },
+  // Lựa chọn chi tiết trong nhóm sự cố (vd: 'flooding', 'road_damage'...) --
+  // xem services/incidentTypes.ts. Không bắt buộc để tương thích với các báo
+  // cáo cũ chưa có trường này.
+  subType: { type: String },
   coordinates: {
     lat: { type: Number, required: true },
     lng: { type: Number, required: true },

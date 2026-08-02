@@ -13,6 +13,7 @@ export interface LatLng {
 export interface IncidentLike {
   _id?: any;
   type: IncidentType;
+  subType?: string;
   note?: string;
   coordinates: LatLng;
   timestamp?: string | Date;
