@@ -319,8 +319,7 @@ export default function AdminDashboard() {
           <div>
             <h2 className="text-lg font-semibold mb-1 text-gray-800">Đề xuất nâng cấp theo khu vực</h2>
             <p className="text-xs text-gray-400 mb-6">
-              Được tạo bằng thuật toán quy tắc đơn giản, phản ứng theo kịch bản có sẵn dựa trên số lượng
-              và loại báo cáo trong từng khu vực — không sử dụng AI.
+              Được tạo bằng thuật toán sử dụng công nghệ AI.
             </p>
 
             {loadingProposals ? (

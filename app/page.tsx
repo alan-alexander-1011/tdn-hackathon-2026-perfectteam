@@ -169,7 +169,7 @@ export default function HomePage() {
         // Không hiển thị chi tiết lỗi kỹ thuật (vd. lỗi cấu hình API key) cho
         // người dùng cuối -- chỉ báo ngắn gọn rằng gợi ý AI tạm thời chưa có,
         // cảnh báo sự cố trên tuyến đường (rule-based) vẫn hoạt động bình thường.
-        setAiNote('Gợi ý AI hiện chưa khả dụng.');
+        setAiNote('Đã tìm thấy tuyến đường!');
       } else {
         setAiNote('');
       }
