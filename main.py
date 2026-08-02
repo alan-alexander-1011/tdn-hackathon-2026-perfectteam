@@ -1,17 +1,25 @@
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from typing import List
+import os
 import google.generativeai as genai
 import json
 
 # ==========================================
-# CẤU HÌNH API KEY (Thay bằng Key của bạn)
+# CẤU HÌNH API KEY
 # ==========================================
-GEMINI_API_KEY = "AQ.Ab8RN6Kqpf6IyqtSeEA0KCYPLlMIB9aoAe0yNu0EGErAg53EwA"
+# Đọc key từ biến môi trường GEMINI_API_KEY -- KHÔNG hardcode key trong code.
+# Đặt biến này trong file .env / cấu hình deploy của bạn trước khi chạy.
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
+if not GEMINI_API_KEY:
+    raise RuntimeError(
+        "Thiếu biến môi trường GEMINI_API_KEY. Hãy đặt biến này trước khi chạy server "
+        "(vd: export GEMINI_API_KEY=... hoặc khai báo trong file .env)."
+    )
 genai.configure(api_key=GEMINI_API_KEY)
 
-# Khởi tạo model (Dùng bản 1.5 Flash cho tốc độ siêu nhanh)
-model = genai.GenerativeModel('gemini-3.5-flash')
+# Khởi tạo model
+model = genai.GenerativeModel(os.environ.get("GEMINI_MODEL", "gemini-2.5-flash"))
 
 app = FastAPI(title="Civic Tech AI - Hackathon Backend")
 
