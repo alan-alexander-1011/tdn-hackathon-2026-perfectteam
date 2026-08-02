@@ -50,31 +50,3 @@ export async function analyzeRouteWithAI(payload: RouteRequestPayload): Promise<
     };
   }
 }
-
-export interface AreaProposal {
-  area: string;
-  center: { lat: number; lng: number };
-  reportCount: number;
-  severity: string;
-  analysis_summary: string;
-  short_term_solutions: string[];
-  long_term_planning: string;
-}
-
-export interface ProposalsResult {
-  proposals: AreaProposal[];
-  aiAvailable: boolean;
-  aiError?: string;
-}
-
-// GET /api/proposals (admin-only, Next.js API route calling Gemini directly)
-export async function getInfrastructureProposals(): Promise<ProposalsResult> {
-  const res = await fetch('/api/proposals');
-  const data = await res.json();
-  if (!res.ok) throw new Error(data?.error || 'AI Infrastructure Proposal Failed');
-  return {
-    proposals: data.proposals || [],
-    aiAvailable: data.aiAvailable ?? true,
-    aiError: data.aiError,
-  };
-}

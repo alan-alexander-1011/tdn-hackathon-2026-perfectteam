@@ -7,6 +7,7 @@ import type { LatLng } from '@/components/MapView';
 import { getRoute, geocodeAddress, RouteResult } from '@/services/osrmService';
 import { analyzeRouteWithAI } from '@/services/aiService';
 import { INCIDENT_TYPES, INCIDENT_TYPE_ORDER, IncidentType } from '@/services/incidentTypes';
+import { findIncidentsOnRoute, buildRouteWarnings } from '@/lib/ruleEngine';
 
 // react-leaflet touches `window`, so it must never render on the server.
 const MapView = dynamic(() => import('@/components/MapView'), { ssr: false });
@@ -43,6 +44,9 @@ export default function HomePage() {
   const [aiAnalyzing, setAiAnalyzing] = useState(false);
   const [routing, setRouting] = useState(false);
   const [routeError, setRouteError] = useState('');
+  // Cảnh báo sự cố phát hiện trên tuyến đường -- tính tức thì bằng thuật
+  // toán quy tắc (lib/ruleEngine.ts), không cần chờ AI.
+  const [routeWarnings, setRouteWarnings] = useState<string[]>([]);
 
   // --- Report state ---
   const [incidentType, setIncidentType] = useState<IncidentType>('infrastructure');
@@ -117,6 +121,7 @@ export default function HomePage() {
       setAiNote('');
       setAiAnalyzing(false);
       setRouteError('');
+      setRouteWarnings([]);
     }
   };
 
@@ -129,11 +134,19 @@ export default function HomePage() {
     setRouteError('');
     setAiInsights([]);
     setAiNote('');
+    setRouteWarnings([]);
     setDestinationPin(destination);
     try {
       const route = await getRoute(myLocation, destination);
       setRouteCoordinates(route.coordinates);
       setRouteInfo(route);
+
+      // Phát hiện sự cố trên tuyến đường bằng thuật toán quy tắc (không cần
+      // AI) và báo ngay cho người dùng -- chạy tức thì, không phụ thuộc vào
+      // việc AI có sẵn hay không.
+      const matches = findIncidentsOnRoute(route.coordinates, incidents);
+      setRouteWarnings(buildRouteWarnings(matches));
+
       // Route is drawn — unblock the UI here and let AI analysis run as its
       // own, separately-indicated step instead of holding up the route.
       setRouting(false);
@@ -156,6 +169,8 @@ export default function HomePage() {
           const smarterRoute = await getRoute(myLocation, destination, aiData.recommendedWaypoints);
           setRouteCoordinates(smarterRoute.coordinates);
           setRouteInfo(smarterRoute);
+          const smarterMatches = findIncidentsOnRoute(smarterRoute.coordinates, incidents);
+          setRouteWarnings(buildRouteWarnings(smarterMatches));
         } catch {
           // Keep the base route if the AI-adjusted one fails to compute.
         }
@@ -197,6 +212,7 @@ export default function HomePage() {
     setAiNote('');
     setAiAnalyzing(false);
     setRouteError('');
+    setRouteWarnings([]);
     setSearchQuery('');
   };
 
@@ -361,6 +377,21 @@ export default function HomePage() {
                   >
                     {routing ? 'Đang tìm đường...' : 'Tìm đường'}
                   </button>
+                )}
+
+                {routeWarnings.length > 0 && (
+                  <div className="mb-2 rounded-xl border border-amber-300 bg-amber-50 overflow-hidden">
+                    <div className="flex items-center gap-1.5 px-3 pt-2.5 text-xs font-semibold text-amber-800">
+                      <span>⚠️</span> Cảnh báo trên tuyến đường
+                    </div>
+                    <ul className="px-3 pb-3 pt-1.5 space-y-1.5">
+                      {routeWarnings.map((w, idx) => (
+                        <li key={idx} className="text-sm text-amber-800">
+                          {w}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
                 )}
 
                 {(aiAnalyzing || aiInsights.length > 0 || aiNote) && (
