@@ -1,0 +1,29 @@
+{
+  "name": "tdn_hackathon_2026",
+  "version": "1.0.0",
+  "description": "---",
+  "main": "index.js",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/alan-alexander-1011/tdn-hackathon-2026-perfectteam.git"
+  },
+  "keywords": [],
+  "type": "module",
+  "bugs": {
+    "url": "https://github.com/alan-alexander-1011/tdn-hackathon-2026-perfectteam/issues"
+  },
+  "homepage": "https://github.com/alan-alexander-1011/tdn-hackathon-2026-perfectteam#readme",
+  "dependencies": {
+    "next": "latest",
+    "react": "latest",
+    "react-dom": "latest"
+  },
+  "allowScripts": {
+    "sharp@0.34.5": true
+  }
+}
