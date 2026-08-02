@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { generateJSON } from '@/lib/gemini';
+import { generateJSON, GeminiError } from '@/lib/gemini';
 
 interface Incident {
   type: string;
@@ -15,6 +15,12 @@ interface RouteInsightsResponse {
 
 // POST /api/route-insights
 // body: { origin: "lat,lng", destination: "lat,lng", currentIncidents: Incident[] }
+//
+// AI insights are a nice-to-have on top of routing, not a hard dependency --
+// if Gemini is unavailable (misconfigured/invalid key, quota, upstream
+// outage) this still returns 200 with empty insights + an explanatory
+// `aiError` field, instead of a 500 that would block the user from getting
+// directions at all.
 export async function POST(req: Request) {
   try {
     const body = await req.json();
@@ -54,20 +60,32 @@ Hãy trả về ĐÚNG định dạng JSON sau (không chứa markdown hay text 
 }
 
 Quy tắc:
-- "recommendedWaypoints" chỉ nên chứa điểm trung gian NẾU cần tránh một sự cố nghiêm trọng (tai nạn, ngập nước) nằm rất gần tuyến đường thẳng giữa điểm đi và điểm đến. Nếu không cần, trả về mảng rỗng [].
+- "recommendedWaypoints" chỉ nên chứa điểm trung gian NẾU cần tránh một sự cố nghiêm trọng nằm rất gần tuyến đường thẳng giữa điểm đi và điểm đến. Nếu không cần, trả về mảng rỗng [].
 - "estimatedTimeDelay" là số phút trễ ước tính do sự cố (0 nếu không ảnh hưởng).
 - "upgradeRecommendations" là danh sách 1-3 gợi ý ngắn gọn (mỗi gợi ý dưới 20 từ) cho người lái xe, bằng tiếng Việt.
 `.trim();
 
-    const data = await generateJSON<RouteInsightsResponse>(prompt);
-
-    return NextResponse.json({
-      recommendedWaypoints: data.recommendedWaypoints || [],
-      estimatedTimeDelay: data.estimatedTimeDelay || 0,
-      upgradeRecommendations: data.upgradeRecommendations || [],
-    });
+    try {
+      const data = await generateJSON<RouteInsightsResponse>(prompt);
+      return NextResponse.json({
+        recommendedWaypoints: data.recommendedWaypoints || [],
+        estimatedTimeDelay: data.estimatedTimeDelay || 0,
+        upgradeRecommendations: data.upgradeRecommendations || [],
+        aiAvailable: true,
+      });
+    } catch (err) {
+      const geminiErr = err instanceof GeminiError ? err : null;
+      console.error('[route-insights] Gemini unavailable:', geminiErr?.code, err);
+      return NextResponse.json({
+        recommendedWaypoints: [],
+        estimatedTimeDelay: 0,
+        upgradeRecommendations: [],
+        aiAvailable: false,
+        aiError: geminiErr?.message || 'AI insights unavailable',
+      });
+    }
   } catch (error: any) {
     console.error(error);
-    return NextResponse.json({ error: error.message || 'AI route analysis failed' }, { status: 500 });
+    return NextResponse.json({ error: error.message || 'Route insights request failed' }, { status: 400 });
   }
 }

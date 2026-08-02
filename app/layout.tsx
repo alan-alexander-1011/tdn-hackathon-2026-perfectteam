@@ -1,8 +1,16 @@
 import './globals.css';
+import type { Metadata, Viewport } from 'next';
 
-export const metadata = {
+export const metadata: Metadata = {
   title: 'Smart Traffic AI',
-  description: 'AI-Powered Urban Traffic Optimization (OpenStreetMap)',
+  description: 'Báo cáo sự cố đô thị theo thời gian thực và chỉ đường thông minh với AI (OpenStreetMap)',
+};
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
 };
 
 export default function RootLayout({
@@ -12,7 +20,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="vi">
-      <body>{children}</body>
+      <body className="antialiased">{children}</body>
     </html>
   );
 }

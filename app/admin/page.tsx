@@ -10,13 +10,17 @@ export default function AdminDashboard() {
   const [proposals, setProposals] = useState<AreaProposal[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [aiError, setAiError] = useState('');
 
   useEffect(() => {
     getInfrastructureProposals()
-      .then(setProposals)
+      .then((result) => {
+        setProposals(result.proposals);
+        if (!result.aiAvailable && result.aiError) setAiError(result.aiError);
+      })
       .catch((err) => {
         console.error(err);
-        setError('Không thể tải đề xuất từ AI. Vui lòng thử lại sau.');
+        setError(err?.message || 'Không thể tải đề xuất từ AI. Vui lòng thử lại sau.');
       })
       .finally(() => setLoading(false));
   }, []);
@@ -35,45 +39,57 @@ export default function AdminDashboard() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <header className="bg-primary text-white p-6 shadow-md flex items-center justify-between">
+      <header className="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between sticky top-0 z-10">
         <div>
-          <h1 className="text-2xl font-bold">Bảng quản trị hạ tầng đô thị</h1>
-          <p className="text-sm opacity-90">Dashboard quy hoạch dựa trên AI (Gemini)</p>
+          <h1 className="text-xl font-bold text-gray-900">Bảng quản trị hạ tầng đô thị</h1>
+          <p className="text-sm text-gray-500">Đề xuất quy hoạch dựa trên AI (Gemini)</p>
         </div>
-        <div className="flex items-center gap-4">
-          <Link href="/" className="text-white/90 hover:text-white text-sm underline">
-            Trang chủ
+        <div className="flex items-center gap-3">
+          <Link
+            href="/"
+            className="text-sm font-medium text-gray-600 hover:text-primary-dark px-3 py-2 rounded-lg hover:bg-gray-100 transition-colors"
+          >
+            ← Về ứng dụng
           </Link>
           <button
             onClick={handleLogout}
-            className="text-sm bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-lg transition-colors"
+            className="text-sm font-medium text-white bg-gray-900 hover:bg-gray-700 px-4 py-2 rounded-lg transition-colors"
           >
             Đăng xuất
           </button>
         </div>
       </header>
 
-      <main className="p-8 max-w-5xl mx-auto">
-        <h2 className="text-xl font-semibold mb-6 text-gray-800">Đề xuất nâng cấp theo khu vực (AI phân tích)</h2>
+      <main className="p-6 md:p-8 max-w-6xl mx-auto">
+        {aiError && (
+          <div className="mb-6 text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
+            <p className="font-semibold mb-1">⚠️ AI hiện không khả dụng</p>
+            <p className="opacity-90">{aiError}</p>
+          </div>
+        )}
+
+        <h2 className="text-lg font-semibold mb-6 text-gray-800">Đề xuất nâng cấp theo khu vực</h2>
 
         {loading ? (
-          <div className="text-primary-dark font-medium animate-pulse">Đang phân tích dữ liệu giao thông...</div>
+          <div className="text-primary-dark font-medium animate-pulse">Đang phân tích dữ liệu...</div>
         ) : error ? (
-          <p className="text-red-600">{error}</p>
+          <p className="text-red-600 bg-red-50 border border-red-200 rounded-xl px-4 py-3">{error}</p>
         ) : proposals.length === 0 ? (
-          <p className="text-gray-500">Chưa đủ dữ liệu để đưa ra đề xuất (cần ít nhất 2 báo cáo trong cùng khu vực).</p>
+          <p className="text-gray-500">
+            Chưa đủ dữ liệu để đưa ra đề xuất (cần ít nhất 2 báo cáo trong cùng khu vực).
+          </p>
         ) : (
           <div className="grid gap-4 md:grid-cols-2">
             {proposals.map((p, idx) => (
-              <div key={idx} className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+              <div key={idx} className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
                 <div className="flex items-center justify-between mb-3">
-                  <span className={`text-xs font-semibold px-2 py-1 rounded-full border ${severityColor(p.severity)}`}>
+                  <span className={`text-xs font-semibold px-2.5 py-1 rounded-full border ${severityColor(p.severity)}`}>
                     Mức độ: {p.severity}
                   </span>
                   <span className="text-xs text-gray-400">{p.reportCount} báo cáo</span>
                 </div>
 
-                <p className="text-gray-700 font-medium mb-3">{p.analysis_summary}</p>
+                <p className="text-gray-800 font-medium mb-3">{p.analysis_summary}</p>
 
                 <p className="text-sm font-semibold text-gray-600 mb-1">Giải pháp ngắn hạn</p>
                 <ul className="list-disc list-inside text-sm text-gray-600 mb-3 space-y-0.5">
@@ -85,8 +101,8 @@ export default function AdminDashboard() {
                 <p className="text-sm font-semibold text-gray-600 mb-1">Quy hoạch dài hạn</p>
                 <p className="text-sm text-gray-600">{p.long_term_planning}</p>
 
-                <p className="text-xs text-gray-400 mt-3">
-                  Khu vực trung tâm: {p.center.lat.toFixed(4)}, {p.center.lng.toFixed(4)}
+                <p className="text-xs text-gray-400 mt-3 pt-3 border-t border-gray-100">
+                  📍 {p.center.lat.toFixed(4)}, {p.center.lng.toFixed(4)}
                 </p>
               </div>
             ))}

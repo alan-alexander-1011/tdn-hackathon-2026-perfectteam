@@ -1,9 +1,10 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+import { INCIDENT_TYPES, IncidentType } from '@/services/incidentTypes';
 
 // Leaflet's default marker icon paths break under webpack/Next.js bundling.
 // Standard fix: point them at the CDN copies instead.
@@ -25,10 +26,12 @@ interface MapViewProps {
   incidents?: any[];
   routeCoordinates?: LatLng[];
   myLocation?: LatLng | null;
-  /** Pinpoint used as the destination for directions -- everyone can set this. */
+  /** Pinpoint used as the destination for directions. */
   destinationPin?: LatLng | null;
-  /** Pinpoint used to report an incident at an arbitrary location -- admin only. */
+  /** Pinpoint used to place a new incident report -- anyone can set this. */
   reportPin?: LatLng | null;
+  /** Category of the report being placed, used to color the reportPin marker. */
+  reportType?: IncidentType;
   onMapClick?: (pos: LatLng) => void;
 }
 
@@ -38,9 +41,20 @@ function FitBounds({ points }: { points: LatLng[] }) {
   useEffect(() => {
     if (points.length > 1) {
       const bounds = L.latLngBounds(points.map((p) => [p.lat, p.lng] as [number, number]));
-      map.fitBounds(bounds, { padding: [40, 40] });
+      map.fitBounds(bounds, { padding: [50, 50] });
     }
   }, [points, map]);
+  return null;
+}
+
+// Re-centers the map when the target changes from outside user interaction
+// (e.g. "Use my location", a geocoded search result).
+function RecenterOnce({ target }: { target: LatLng | null | undefined }) {
+  const map = useMap();
+  useEffect(() => {
+    if (target) map.setView([target.lat, target.lng], Math.max(map.getZoom(), 15));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [target?.lat, target?.lng]);
   return null;
 }
 
@@ -53,31 +67,38 @@ function ClickHandler({ onClick }: { onClick?: (pos: LatLng) => void }) {
   return null;
 }
 
-const incidentIcon = L.divIcon({
-  className: '',
-  html: '<div style="background:#ef4444;width:14px;height:14px;border-radius:50%;border:2px solid white;box-shadow:0 1px 3px rgba(0,0,0,0.4);"></div>',
-  iconSize: [14, 14],
-});
+function incidentIcon(type: IncidentType) {
+  const meta = INCIDENT_TYPES[type];
+  const color = meta?.color || '#6b7280';
+  return L.divIcon({
+    className: '',
+    html: `<div style="background:${color};width:16px;height:16px;border-radius:50%;border:2.5px solid white;box-shadow:0 1px 4px rgba(0,0,0,0.45);"></div>`,
+    iconSize: [16, 16],
+  });
+}
 
 const myLocationIcon = L.divIcon({
   className: '',
-  html: '<div style="background:#3b82f6;width:16px;height:16px;border-radius:50%;border:3px solid white;box-shadow:0 1px 4px rgba(0,0,0,0.5);"></div>',
-  iconSize: [16, 16],
+  html: '<div style="position:relative;width:18px;height:18px;"><div style="position:absolute;inset:-6px;background:rgba(59,130,246,0.25);border-radius:50%;"></div><div style="background:#3b82f6;width:16px;height:16px;border-radius:50%;border:3px solid white;box-shadow:0 1px 4px rgba(0,0,0,0.5);"></div></div>',
+  iconSize: [18, 18],
 });
 
 const destinationIcon = L.divIcon({
   className: '',
-  html: '<div style="width:24px;height:24px;border-radius:50% 50% 50% 0;background:#6366f1;border:2px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.4);transform:rotate(-45deg);"></div>',
-  iconSize: [24, 24],
-  iconAnchor: [12, 24],
+  html: '<div style="width:26px;height:26px;border-radius:50% 50% 50% 0;background:#4f46e5;border:2.5px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.4);transform:rotate(-45deg);"></div>',
+  iconSize: [26, 26],
+  iconAnchor: [13, 26],
 });
 
-const reportPinIcon = L.divIcon({
-  className: '',
-  html: '<div style="width:24px;height:24px;border-radius:50% 50% 50% 0;background:#f97316;border:2px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.4);transform:rotate(-45deg);"></div>',
-  iconSize: [24, 24],
-  iconAnchor: [12, 24],
-});
+function reportPinIcon(type: IncidentType | undefined) {
+  const color = type ? INCIDENT_TYPES[type]?.color : '#f97316';
+  return L.divIcon({
+    className: '',
+    html: `<div style="width:26px;height:26px;border-radius:50% 50% 50% 0;background:${color || '#f97316'};border:2.5px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.4);transform:rotate(-45deg);"></div>`,
+    iconSize: [26, 26],
+    iconAnchor: [13, 26],
+  });
+}
 
 export default function MapView({
   center,
@@ -86,8 +107,11 @@ export default function MapView({
   myLocation,
   destinationPin,
   reportPin,
+  reportType,
   onMapClick,
 }: MapViewProps) {
+  const destIcon = useMemo(() => destinationIcon, []);
+
   return (
     <MapContainer center={[center.lat, center.lng]} zoom={14} style={{ height: '100%', width: '100%' }}>
       <TileLayer
@@ -96,10 +120,16 @@ export default function MapView({
       />
 
       {incidents.map((incident, idx) => (
-        <Marker key={idx} position={[incident.coordinates.lat, incident.coordinates.lng]} icon={incidentIcon}>
+        <Marker
+          key={incident._id ? String(incident._id) : idx}
+          position={[incident.coordinates.lat, incident.coordinates.lng]}
+          icon={incidentIcon(incident.type)}
+        >
           <Popup>
-            {incident.type}
-            {incident.note ? ` — ${incident.note}` : ''}
+            <span className="font-medium">
+              {INCIDENT_TYPES[incident.type as IncidentType]?.icon} {INCIDENT_TYPES[incident.type as IncidentType]?.label || incident.type}
+            </span>
+            {incident.note ? <><br />{incident.note}</> : null}
           </Popup>
         </Marker>
       ))}
@@ -113,7 +143,7 @@ export default function MapView({
       {destinationPin && (
         <Marker
           position={[destinationPin.lat, destinationPin.lng]}
-          icon={destinationIcon}
+          icon={destIcon}
           draggable
           eventHandlers={{
             dragend: (e) => {
@@ -129,7 +159,7 @@ export default function MapView({
       {reportPin && (
         <Marker
           position={[reportPin.lat, reportPin.lng]}
-          icon={reportPinIcon}
+          icon={reportPinIcon(reportType)}
           draggable
           eventHandlers={{
             dragend: (e) => {
@@ -138,7 +168,7 @@ export default function MapView({
             },
           }}
         >
-          <Popup>Vị trí báo cáo (admin)</Popup>
+          <Popup>Vị trí báo cáo</Popup>
         </Marker>
       )}
 
@@ -146,11 +176,13 @@ export default function MapView({
         <>
           <Polyline
             positions={routeCoordinates.map((p) => [p.lat, p.lng])}
-            pathOptions={{ color: '#6366f1', weight: 6, opacity: 0.9 }}
+            pathOptions={{ color: '#4f46e5', weight: 6, opacity: 0.85 }}
           />
           <FitBounds points={routeCoordinates} />
         </>
       )}
+
+      {!routeCoordinates.length && <RecenterOnce target={destinationPin || reportPin || null} />}
 
       <ClickHandler onClick={onMapClick} />
     </MapContainer>

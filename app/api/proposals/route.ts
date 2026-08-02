@@ -3,12 +3,11 @@ import dbConnect from '@/lib/mongodb';
 import Report from '@/models/Report';
 import { generateJSON } from '@/lib/gemini';
 import { isAdminRequest } from '@/lib/adminAuth';
+import { INCIDENT_TYPES } from '@/services/incidentTypes';
 
-const TYPE_LABELS: Record<string, string> = {
-  accident: 'Tai nạn',
-  flood: 'Ngập nước',
-  traffic_jam: 'Kẹt xe',
-};
+const TYPE_LABELS: Record<string, string> = Object.fromEntries(
+  Object.entries(INCIDENT_TYPES).map(([key, meta]) => [key, meta.label])
+);
 
 interface ProposalResult {
   severity: string;
@@ -52,7 +51,7 @@ export async function GET(req: Request) {
       return NextResponse.json({ proposals: [] });
     }
 
-    const proposals = await Promise.all(
+    const results = await Promise.allSettled(
       candidateAreas.map(async ([key, items]) => {
         // Same shape as main.py's `feedback_text` join.
         const feedbackText = items
@@ -93,7 +92,22 @@ Dựa trên các dữ liệu trên, hãy phân tích và trả về ĐÚNG đị
       })
     );
 
-    return NextResponse.json({ proposals });
+    const proposals = results
+      .filter((r): r is PromiseFulfilledResult<any> => r.status === 'fulfilled')
+      .map((r) => r.value);
+    const failures = results.filter((r) => r.status === 'rejected');
+    if (failures.length) {
+      console.error(`[proposals] ${failures.length}/${results.length} area(s) failed Gemini analysis:`, failures[0]);
+    }
+
+    return NextResponse.json({
+      proposals,
+      aiAvailable: proposals.length > 0 || failures.length === 0,
+      aiError:
+        failures.length && proposals.length === 0
+          ? (failures[0] as PromiseRejectedResult).reason?.message || 'AI analysis failed'
+          : undefined,
+    });
   } catch (error: any) {
     console.error(error);
     return NextResponse.json({ error: error.message || 'Failed to generate proposals' }, { status: 500 });

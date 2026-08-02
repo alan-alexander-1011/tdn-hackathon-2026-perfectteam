@@ -8,18 +8,47 @@ export interface AIAnalysisResponse {
   recommendedWaypoints: { lat: number; lng: number }[];
   estimatedTimeDelay: number;
   upgradeRecommendations: string[];
+  aiAvailable: boolean;
+  aiError?: string;
 }
 
-// Was: POST `${PYTHON_BACKEND_URL}/analyze-route`
-// Now: POST /api/route-insights (Next.js API route calling Gemini directly)
+// Calls /api/route-insights. Never throws for AI-side failures (invalid key,
+// quota, upstream outage) -- those come back as aiAvailable:false with an
+// aiError message so the caller can still get a route without AI insights.
+// Only throws for actual network/request failures.
 export async function analyzeRouteWithAI(payload: RouteRequestPayload): Promise<AIAnalysisResponse> {
-  const res = await fetch('/api/route-insights', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
-  });
-  if (!res.ok) throw new Error('AI Route Analysis Failed');
-  return res.json();
+  try {
+    const res = await fetch('/api/route-insights', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      return {
+        recommendedWaypoints: [],
+        estimatedTimeDelay: 0,
+        upgradeRecommendations: [],
+        aiAvailable: false,
+        aiError: data?.error || 'AI route analysis failed',
+      };
+    }
+    return {
+      recommendedWaypoints: data.recommendedWaypoints || [],
+      estimatedTimeDelay: data.estimatedTimeDelay || 0,
+      upgradeRecommendations: data.upgradeRecommendations || [],
+      aiAvailable: data.aiAvailable ?? true,
+      aiError: data.aiError,
+    };
+  } catch (err: any) {
+    return {
+      recommendedWaypoints: [],
+      estimatedTimeDelay: 0,
+      upgradeRecommendations: [],
+      aiAvailable: false,
+      aiError: err?.message || 'Không thể kết nối tới máy chủ AI',
+    };
+  }
 }
 
 export interface AreaProposal {
@@ -32,11 +61,20 @@ export interface AreaProposal {
   long_term_planning: string;
 }
 
-// Was: POST `${PYTHON_BACKEND_URL}/propose-upgrades`
-// Now: GET /api/proposals (admin-only, Next.js API route calling Gemini directly)
-export async function getInfrastructureProposals(): Promise<AreaProposal[]> {
+export interface ProposalsResult {
+  proposals: AreaProposal[];
+  aiAvailable: boolean;
+  aiError?: string;
+}
+
+// GET /api/proposals (admin-only, Next.js API route calling Gemini directly)
+export async function getInfrastructureProposals(): Promise<ProposalsResult> {
   const res = await fetch('/api/proposals');
-  if (!res.ok) throw new Error('AI Infrastructure Proposal Failed');
   const data = await res.json();
-  return data.proposals || [];
+  if (!res.ok) throw new Error(data?.error || 'AI Infrastructure Proposal Failed');
+  return {
+    proposals: data.proposals || [],
+    aiAvailable: data.aiAvailable ?? true,
+    aiError: data.aiError,
+  };
 }

@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 import dbConnect from '@/lib/mongodb';
 import Report from '@/models/Report';
-import { isAdminRequest } from '@/lib/adminAuth';
+
+const VALID_TYPES = new Set(['environment', 'infrastructure', 'utilities', 'safety']);
 
 // Haversine distance in kilometers between two lat/lng points.
 function getDistanceKm(lat1: number, lng1: number, lat2: number, lng2: number) {
@@ -18,7 +19,7 @@ function getDistanceKm(lat1: number, lng1: number, lat2: number, lng2: number) {
   return R * c;
 }
 
-// GET /api/incidents            -> all incidents
+// GET /api/incidents                    -> all incidents
 // GET /api/incidents?lat=&lng=&radius=  -> only incidents within `radius` km (default 5km)
 export async function GET(req: Request) {
   await dbConnect();
@@ -45,28 +46,27 @@ export async function GET(req: Request) {
   }
 }
 
-// body: { type, coordinates: {lat,lng}, note?, source?: 'gps' | 'admin_pinpoint' }
-// `admin_pinpoint` means the reporter dropped a pin anywhere on the map
-// instead of using their own GPS location -- only admins are allowed to do
-// that, so it's checked server-side here, not just hidden in the UI.
+// body: { type, coordinates: {lat,lng}, note? }
+// Anyone can report at any point they pin on the map -- there is no GPS-only
+// restriction, so the location the person selected is trusted as-is.
 export async function POST(req: Request) {
   await dbConnect();
   try {
     const body = await req.json();
-    const source = body.source === 'admin_pinpoint' ? 'admin_pinpoint' : 'gps';
 
-    if (source === 'admin_pinpoint' && !(await isAdminRequest(req))) {
-      return NextResponse.json(
-        { error: 'Chỉ admin mới có thể ghim vị trí báo cáo tuỳ ý' },
-        { status: 403 }
-      );
+    if (!VALID_TYPES.has(body.type)) {
+      return NextResponse.json({ error: 'Loại sự cố không hợp lệ' }, { status: 400 });
+    }
+    const lat = body?.coordinates?.lat;
+    const lng = body?.coordinates?.lng;
+    if (typeof lat !== 'number' || typeof lng !== 'number') {
+      return NextResponse.json({ error: 'Toạ độ không hợp lệ' }, { status: 400 });
     }
 
     const newReport = await Report.create({
       type: body.type,
-      coordinates: body.coordinates,
+      coordinates: { lat, lng },
       note: body.note,
-      source,
     });
     return NextResponse.json(newReport, { status: 201 });
   } catch (error) {
